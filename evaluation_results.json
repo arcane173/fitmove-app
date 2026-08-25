@@ -1,0 +1,535 @@
+{
+  "model_performance": {},
+  "algorithm_comparison": {
+    "curl": {
+      "Random Forest": {
+        "model_name": "Random Forest",
+        "accuracy": 98.53,
+        "precision": 98.59,
+        "recall": 98.53,
+        "f1_score": 98.53,
+        "per_class": {
+          "bad": {
+            "precision": 1.0,
+            "recall": 0.9523809523809523,
+            "f1": 0.975609756097561,
+            "support": 21
+          },
+          "good": {
+            "precision": 0.96,
+            "recall": 1.0,
+            "f1": 0.9795918367346939,
+            "support": 24
+          },
+          "perfect": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 23
+          }
+        },
+        "confusion_matrix": [
+          [
+            20,
+            1,
+            0
+          ],
+          [
+            0,
+            24,
+            0
+          ],
+          [
+            0,
+            0,
+            23
+          ]
+        ],
+        "classification_report": "              precision    recall  f1-score   support\n\n         bad       1.00      0.95      0.98        21\n        good       0.96      1.00      0.98        24\n     perfect       1.00      1.00      1.00        23\n\n    accuracy                           0.99        68\n   macro avg       0.99      0.98      0.99        68\nweighted avg       0.99      0.99      0.99        68\n",
+        "cv_mean": 96.15,
+        "cv_std": 3.91,
+        "cv_scores": [
+          89.71,
+          100.0,
+          97.01,
+          100.0,
+          94.03
+        ],
+        "selected": false
+      },
+      "SVM": {
+        "model_name": "SVM",
+        "accuracy": 100.0,
+        "precision": 100.0,
+        "recall": 100.0,
+        "f1_score": 100.0,
+        "per_class": {
+          "bad": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 21
+          },
+          "good": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 24
+          },
+          "perfect": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0,
+            "support": 23
+          }
+        },
+        "confusion_matrix": [
+          [
+            21,
+            0,
+            0
+          ],
+          [
+            0,
+            24,
+            0
+          ],
+          [
+            0,
+            0,
+            23
+          ]
+        ],
+        "classification_report": "              precision    recall  f1-score   support\n\n         bad       1.00      1.00      1.00        21\n        good       1.00      1.00      1.00        24\n     perfect       1.00      1.00      1.00        23\n\n    accuracy                           1.00        68\n   macro avg       1.00      1.00      1.00        68\nweighted avg       1.00      1.00      1.00        68\n",
+        "cv_mean": 97.03,
+        "cv_std": 4.11,
+        "cv_scores": [
+          95.59,
+          100.0,
+          100.0,
+          100.0,
+          89.55
+        ],
+        "selected": true
+      },
+      "Neural Network": {
+        "model_name": "Neural Network",
+        "accuracy": 89.71,
+        "precision": 92.03,
+        "recall": 89.71,
+        "f1_score": 89.91,
+        "per_class": {
+          "bad": {
+            "precision": 1.0,
+            "recall": 0.8571428571428571,
+            "f1": 0.9230769230769231,
+            "support": 21
+          },
+          "good": {
+            "precision": 0.7741935483870968,
+            "recall": 1.0,
+            "f1": 0.8727272727272727,
+            "support": 24
+          },
+          "perfect": {
+            "precision": 1.0,
+            "recall": 0.8260869565217391,
+            "f1": 0.9047619047619048,
+            "support": 23
+          }
+        },
+        "confusion_matrix": [
+          [
+            18,
+            3,
+            0
+          ],
+          [
+            0,
+            24,
+            0
+          ],
+          [
+            0,
+            4,
+            19
+          ]
+        ],
+        "classification_report": "              precision    recall  f1-score   support\n\n         bad       1.00      0.86      0.92        21\n        good       0.77      1.00      0.87        24\n     perfect       1.00      0.83      0.90        23\n\n    accuracy                           0.90        68\n   macro avg       0.92      0.89      0.90        68\nweighted avg       0.92      0.90      0.90        68\n",
+        "cv_mean": 94.35,
+        "cv_std": 5.28,
+        "cv_scores": [
+          92.65,
+          100.0,
+          98.51,
+          95.52,
+          85.07
+        ],
+        "selected": false
+      }
+    },
+    "pushup": {
+      "Random Forest": {
+        "model_name": "Random Forest",
+        "accuracy": 83.58,
+        "precision": 83.56,
+        "recall": 83.58,
+        "f1_score": 83.21,
+        "per_class": {
+          "bad": {
+            "precision": 0.875,
+            "recall": 0.9545454545454546,
+            "f1": 0.9130434782608695,
+            "support": 22
+          },
+          "good": {
+            "precision": 0.8333333333333334,
+            "recall": 0.6818181818181818,
+            "f1": 0.75,
+            "support": 22
+          },
+          "perfect": {
+            "precision": 0.8,
+            "recall": 0.8695652173913043,
+            "f1": 0.8333333333333334,
+            "support": 23
+          }
+        },
+        "confusion_matrix": [
+          [
+            21,
+            1,
+            0
+          ],
+          [
+            2,
+            15,
+            5
+          ],
+          [
+            1,
+            2,
+            20
+          ]
+        ],
+        "classification_report": "              precision    recall  f1-score   support\n\n         bad       0.88      0.95      0.91        22\n        good       0.83      0.68      0.75        22\n     perfect       0.80      0.87      0.83        23\n\n    accuracy                           0.84        67\n   macro avg       0.84      0.84      0.83        67\nweighted avg       0.84      0.84      0.83        67\n",
+        "cv_mean": 85.63,
+        "cv_std": 4.95,
+        "cv_scores": [
+          77.61,
+          88.06,
+          83.58,
+          92.54,
+          86.36
+        ],
+        "selected": true
+      },
+      "SVM": {
+        "model_name": "SVM",
+        "accuracy": 73.13,
+        "precision": 72.31,
+        "recall": 73.13,
+        "f1_score": 72.62,
+        "per_class": {
+          "bad": {
+            "precision": 0.875,
+            "recall": 0.9545454545454546,
+            "f1": 0.9130434782608695,
+            "support": 22
+          },
+          "good": {
+            "precision": 0.6,
+            "recall": 0.5454545454545454,
+            "f1": 0.5714285714285714,
+            "support": 22
+          },
+          "perfect": {
+            "precision": 0.6956521739130435,
+            "recall": 0.6956521739130435,
+            "f1": 0.6956521739130435,
+            "support": 23
+          }
+        },
+        "confusion_matrix": [
+          [
+            21,
+            1,
+            0
+          ],
+          [
+            3,
+            12,
+            7
+          ],
+          [
+            0,
+            7,
+            16
+          ]
+        ],
+        "classification_report": "              precision    recall  f1-score   support\n\n         bad       0.88      0.95      0.91        22\n        good       0.60      0.55      0.57        22\n     perfect       0.70      0.70      0.70        23\n\n    accuracy                           0.73        67\n   macro avg       0.72      0.73      0.73        67\nweighted avg       0.72      0.73      0.73        67\n",
+        "cv_mean": 83.84,
+        "cv_std": 6.94,
+        "cv_scores": [
+          70.15,
+          85.07,
+          88.06,
+          88.06,
+          87.88
+        ],
+        "selected": false
+      },
+      "Neural Network": {
+        "model_name": "Neural Network",
+        "accuracy": 73.13,
+        "precision": 72.92,
+        "recall": 73.13,
+        "f1_score": 73.0,
+        "per_class": {
+          "bad": {
+            "precision": 0.8695652173913043,
+            "recall": 0.9090909090909091,
+            "f1": 0.8888888888888888,
+            "support": 22
+          },
+          "good": {
+            "precision": 0.5909090909090909,
+            "recall": 0.5909090909090909,
+            "f1": 0.5909090909090909,
+            "support": 22
+          },
+          "perfect": {
+            "precision": 0.7272727272727273,
+            "recall": 0.6956521739130435,
+            "f1": 0.7111111111111111,
+            "support": 23
+          }
+        },
+        "confusion_matrix": [
+          [
+            20,
+            2,
+            0
+          ],
+          [
+            3,
+            13,
+            6
+          ],
+          [
+            0,
+            7,
+            16
+          ]
+        ],
+        "classification_report": "              precision    recall  f1-score   support\n\n         bad       0.87      0.91      0.89        22\n        good       0.59      0.59      0.59        22\n     perfect       0.73      0.70      0.71        23\n\n    accuracy                           0.73        67\n   macro avg       0.73      0.73      0.73        67\nweighted avg       0.73      0.73      0.73        67\n",
+        "cv_mean": 74.59,
+        "cv_std": 16.05,
+        "cv_scores": [
+          49.25,
+          91.04,
+          62.69,
+          82.09,
+          87.88
+        ],
+        "selected": false
+      }
+    },
+    "squat": {
+      "Random Forest": {
+        "model_name": "Random Forest",
+        "accuracy": 91.67,
+        "precision": 92.11,
+        "recall": 91.67,
+        "f1_score": 91.78,
+        "per_class": {
+          "bad": {
+            "precision": 0.9166666666666666,
+            "recall": 0.9166666666666666,
+            "f1": 0.9166666666666666,
+            "support": 24
+          },
+          "good": {
+            "precision": 0.84,
+            "recall": 0.9130434782608695,
+            "f1": 0.875,
+            "support": 23
+          },
+          "perfect": {
+            "precision": 1.0,
+            "recall": 0.92,
+            "f1": 0.9583333333333334,
+            "support": 25
+          }
+        },
+        "confusion_matrix": [
+          [
+            22,
+            2,
+            0
+          ],
+          [
+            2,
+            21,
+            0
+          ],
+          [
+            0,
+            2,
+            23
+          ]
+        ],
+        "classification_report": "              precision    recall  f1-score   support\n\n         bad       0.92      0.92      0.92        24\n        good       0.84      0.91      0.88        23\n     perfect       1.00      0.92      0.96        25\n\n    accuracy                           0.92        72\n   macro avg       0.92      0.92      0.92        72\nweighted avg       0.92      0.92      0.92        72\n",
+        "cv_mean": 89.38,
+        "cv_std": 7.29,
+        "cv_scores": [
+          77.78,
+          93.06,
+          88.73,
+          100.0,
+          87.32
+        ],
+        "selected": true
+      },
+      "SVM": {
+        "model_name": "SVM",
+        "accuracy": 88.89,
+        "precision": 90.12,
+        "recall": 88.89,
+        "f1_score": 89.09,
+        "per_class": {
+          "bad": {
+            "precision": 0.9166666666666666,
+            "recall": 0.9166666666666666,
+            "f1": 0.9166666666666666,
+            "support": 24
+          },
+          "good": {
+            "precision": 0.7777777777777778,
+            "recall": 0.9130434782608695,
+            "f1": 0.84,
+            "support": 23
+          },
+          "perfect": {
+            "precision": 1.0,
+            "recall": 0.84,
+            "f1": 0.9130434782608695,
+            "support": 25
+          }
+        },
+        "confusion_matrix": [
+          [
+            22,
+            2,
+            0
+          ],
+          [
+            2,
+            21,
+            0
+          ],
+          [
+            0,
+            4,
+            21
+          ]
+        ],
+        "classification_report": "              precision    recall  f1-score   support\n\n         bad       0.92      0.92      0.92        24\n        good       0.78      0.91      0.84        23\n     perfect       1.00      0.84      0.91        25\n\n    accuracy                           0.89        72\n   macro avg       0.90      0.89      0.89        72\nweighted avg       0.90      0.89      0.89        72\n",
+        "cv_mean": 87.42,
+        "cv_std": 6.36,
+        "cv_scores": [
+          75.0,
+          90.28,
+          88.73,
+          92.96,
+          90.14
+        ],
+        "selected": false
+      },
+      "Neural Network": {
+        "model_name": "Neural Network",
+        "accuracy": 88.89,
+        "precision": 90.53,
+        "recall": 88.89,
+        "f1_score": 88.95,
+        "per_class": {
+          "bad": {
+            "precision": 0.9473684210526315,
+            "recall": 0.75,
+            "f1": 0.8372093023255814,
+            "support": 24
+          },
+          "good": {
+            "precision": 0.7586206896551724,
+            "recall": 0.9565217391304348,
+            "f1": 0.8461538461538461,
+            "support": 23
+          },
+          "perfect": {
+            "precision": 1.0,
+            "recall": 0.96,
+            "f1": 0.9795918367346939,
+            "support": 25
+          }
+        },
+        "confusion_matrix": [
+          [
+            18,
+            6,
+            0
+          ],
+          [
+            1,
+            22,
+            0
+          ],
+          [
+            0,
+            1,
+            24
+          ]
+        ],
+        "classification_report": "              precision    recall  f1-score   support\n\n         bad       0.95      0.75      0.84        24\n        good       0.76      0.96      0.85        23\n     perfect       1.00      0.96      0.98        25\n\n    accuracy                           0.89        72\n   macro avg       0.90      0.89      0.89        72\nweighted avg       0.91      0.89      0.89        72\n",
+        "cv_mean": 75.63,
+        "cv_std": 9.19,
+        "cv_scores": [
+          66.67,
+          86.11,
+          77.46,
+          63.38,
+          84.51
+        ],
+        "selected": false
+      }
+    }
+  },
+  "best_algorithm": {
+    "curl": "SVM",
+    "pushup": "Random Forest",
+    "squat": "Random Forest"
+  },
+  "latency": {
+    "model_inference": {
+      "curl": {
+        "mean_ms": 0.1045,
+        "median_ms": 0.0999,
+        "std_ms": 0.0117,
+        "p95_ms": 0.131
+      },
+      "pushup": {
+        "mean_ms": 15.62,
+        "median_ms": 15.6691,
+        "std_ms": 0.3669,
+        "p95_ms": 16.0853
+      },
+      "squat": {
+        "mean_ms": 15.5578,
+        "median_ms": 15.5762,
+        "std_ms": 0.3455,
+        "p95_ms": 16.0472
+      }
+    }
+  },
+  "user_study": [],
+  "expert_validation": []
+}
