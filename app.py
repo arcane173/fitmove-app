@@ -1,4 +1,5 @@
 import streamlit as st
+import cv2
 import mediapipe as mp
 import numpy as np
 import joblib
@@ -27,6 +28,22 @@ st.set_page_config(
 
 init_db()
 
+# ==================== MEDIAPIPE INIT (Kompatibel Semua Versi) ==================
+# Coba import dengan cara yang benar untuk MediaPipe versi terbaru (1.0.0+)
+try:
+    from mediapipe.python import solutions as mp_solutions
+    mp_pose = mp_solutions.pose
+    mp_drawing = mp_solutions.drawing_utils
+# Jika gagal, coba cara lama (MediaPipe 0.10.x)
+except (ImportError, AttributeError):
+    try:
+        mp_pose = mp.solutions.pose
+        mp_drawing = mp.solutions.drawing_utils
+    # Jika keduanya gagal, tampilkan pesan error yang jelas
+    except AttributeError:
+        st.error("MediaPipe tidak terinstal dengan benar. Silakan jalankan `pip install mediapipe --upgrade`.")
+        st.stop()
+
 # ==================== SESSION STATE ====================
 _DEFAULTS = {
     "user":             None,
@@ -41,16 +58,6 @@ _DEFAULTS = {
 for k, v in _DEFAULTS.items():
     if k not in st.session_state:
         st.session_state[k] = v
-
-# ==================== MEDIAPIPE INIT (Kompatibel) ====================
-# Cara import yang kompatibel dengan MediaPipe 1.0.0+ dan 0.10.x
-try:
-    from mediapipe.python.solutions import pose as mp_pose
-    from mediapipe.python.solutions import drawing_utils as mp_drawing
-except (ImportError, AttributeError):
-    # Fallback untuk MediaPipe versi lama (0.10.x)
-    mp_pose = mp.solutions.pose
-    mp_drawing = mp.solutions.drawing_utils
 
 EX = {
     "pushup": {"icon":"🤸","name":"Push-Up",   "desc":"Chest · Shoulders · Triceps","color":"#00ff88","muscles":["Chest","Shoulders","Triceps"]},
@@ -333,827 +340,520 @@ def show_header(logged_in=False):
     with nav_col:
         dm = st.session_state.dark_mode
         if logged_in:
-            c1, c2, c3, c4 = st.columns(4)
-            with c1:
-                if st.button("☀️" if dm else "🌙", help="Ganti Tema",
-                             use_container_width=True, key="hdr_theme"):
-                    st.session_state.dark_mode = not dm
-                    st.rerun()
-            with c2:
-                if st.button("🏠", help="Beranda",
-                             use_container_width=True, key="hdr_home"):
-                    st.session_state.workout_done   = False
-                    st.session_state.workout_result = None
-                    st.session_state.page           = "home"
-                    st.rerun()
-            with c3:
-                if st.button("👤", help="Profil",
-                             use_container_width=True, key="hdr_prof"):
-                    st.session_state.workout_done   = False
-                    st.session_state.workout_result = None
-                    st.session_state.page           = "profile"
-                    st.rerun()
-            with c4:
-                if st.button("Logout", help="Keluar",
-                             use_container_width=True, key="hdr_exit"):
-                    st.session_state.user           = None
-                    st.session_state.workout_done   = False
-                    st.session_state.workout_result = None
-                    st.session_state.page           = "login"
-                    st.rerun()
-        else:
-            if st.button("☀️" if dm else "🌙", help="Ganti Tema",
-                         use_container_width=True, key="hdr_theme_g"):
-                st.session_state.dark_mode = not dm
+            if st.button("🚪", key="logout_btn", help="Logout"):
+                st.session_state.user = None
+                st.session_state.page = "login"
                 st.rerun()
-    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
 
 def show_footer():
-    st.markdown("""
-    <div class="fm-footer">
-      <div class="fm-footer-brand">⚡ FitMove</div>
-      <div class="fm-footer-sub">
-        AI-Powered Workout Coach<br>
-        Deteksi &amp; Evaluasi Gerakan Real-time · Berbasis MediaPipe &amp; Machine Learning
-      </div>
+    st.markdown(f"""
+    <div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:48px;margin-top:80px;border-top:1px solid rgba(255,255,255,0.08);background:#050508">
+      <div class="fm-footer-brand">FitMove</div>
+      <div class="fm-footer-sub">AI Workout Coach<br>Powered by MediaPipe & Machine Learning</div>
       <div class="fm-footer-pills">
-        <span class="fm-pill">MediaPipe</span>
-        <span class="fm-pill">Scikit-Learn</span>
-        <span class="fm-pill">Streamlit</span>
-        <span class="fm-pill">OpenCV</span>
-        <span class="fm-pill">SQLite</span>
+        <span class="fm-pill">🏋️ Push-Up</span>
+        <span class="fm-pill">💪 Bicep Curl</span>
+        <span class="fm-pill">🏋️ Squat</span>
       </div>
-      <div style="margin-top:20px;font-size:.74rem;color:#3a3a4a">
-        © 2024 FitMove · Magnum Opus Edition · Dibuat dengan ❤️ &amp; ☕
-      </div>
-    </div>""", unsafe_allow_html=True)
+    </div>
+    """, unsafe_allow_html=True)
 
 
-# ==================== LOGIN ====================
-def page_login():
-    inject_css()
-    show_header(logged_in=False)
-    _, col, _ = st.columns([1, 1.5, 1])
-    with col:
-        st.markdown("""
-        <div class="fm-card" style="animation:fadeUp .5s ease both">
-          <div class="auth-icon-wrap">👋</div>
-          <div class="auth-title">Welcome Back</div>
-          <div class="auth-sub">Masuk untuk melanjutkan sesi latihan kamu</div>
-        </div>""", unsafe_allow_html=True)
-        email    = st.text_input("EMAIL", placeholder="kamu@gmail.com", key="li_email")
-        password = st.text_input("PASSWORD", type="password",
-                                 placeholder="••••••••", key="li_pw")
-        st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
-        if st.button("MASUK →", type="primary", use_container_width=True, key="btn_li"):
-            if not email or not password:
-                st.markdown("<div class='fm-err'>⚠️ Isi email &amp; password dulu.</div>",
-                            unsafe_allow_html=True)
-            else:
-                user = login_user(email, password)
-                if user:
-                    st.session_state.user           = user
-                    st.session_state.workout_done   = False
-                    st.session_state.workout_result = None
-                    st.session_state.page           = "home"
-                    st.rerun()
-                else:
-                    st.markdown("<div class='fm-err'>❌ Email atau password salah.</div>",
-                                unsafe_allow_html=True)
-        st.markdown("<div class='fm-divider'>atau</div>", unsafe_allow_html=True)
-        if st.button("Daftar Sekarang — Gratis", type="secondary",
-                     use_container_width=True, key="btn_go_reg"):
-            st.session_state.page = "register"
+# ==================== AUTH ====================
+def render_login():
+    st.markdown(f"""
+    <div style="max-width:460px;margin:80px auto 0;padding:20px">
+      <div class="fm-card">
+        <div class="auth-icon-wrap">⚡</div>
+        <h2 class="auth-title">Selamat Datang!</h2>
+        <p class="auth-sub">Masuk untuk mulai latihan dengan AI Coach</p>
+    """, unsafe_allow_html=True)
+
+    email = st.text_input("📧 Email", key="login_email")
+    password = st.text_input("🔒 Password", type="password", key="login_password")
+
+    if st.button("🚀 Masuk", type="primary", use_container_width=True):
+        user = login_user(email, password)
+        if user:
+            st.session_state.user = user
+            st.session_state.page = "home"
             st.rerun()
-    show_footer()
+        else:
+            st.markdown('<div class="fm-err">❌ Email atau password salah!</div>', unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="fm-divider">Belum punya akun?</div>
+    """, unsafe_allow_html=True)
+
+    if st.button("📝 Daftar Sekarang", use_container_width=True):
+        st.session_state.page = "register"
+        st.rerun()
+
+    st.markdown('</div>', unsafe_allow_html=True)
 
 
-# ==================== REGISTER ====================
-def page_register():
-    inject_css()
-    show_header(logged_in=False)
-    _, col, _ = st.columns([1, 1.5, 1])
-    with col:
-        st.markdown("""
-        <div class="fm-card" style="animation:fadeUp .5s ease both">
-          <div class="auth-icon-wrap">🚀</div>
-          <div class="auth-title">Buat Akun</div>
-          <div class="auth-sub">Mulai perjalanan fitness AI kamu hari ini — gratis selamanya</div>
-        </div>""", unsafe_allow_html=True)
-        email    = st.text_input("EMAIL GMAIL", placeholder="kamu@gmail.com", key="reg_email")
-        phone    = st.text_input("NOMOR TELEPON", placeholder="08xx-xxxx-xxxx", key="reg_phone")
-        password = st.text_input("PASSWORD", type="password",
-                                 placeholder="Min. 6 karakter", key="reg_pw")
-        confirm  = st.text_input("KONFIRMASI PASSWORD", type="password",
-                                 placeholder="Ulangi password", key="reg_conf")
-        st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
-        if st.button("DAFTAR SEKARANG →", type="primary",
-                     use_container_width=True, key="btn_reg"):
-            if not all([email, phone, password, confirm]):
-                st.markdown("<div class='fm-err'>⚠️ Semua field harus diisi.</div>",
-                            unsafe_allow_html=True)
-            elif not email.endswith("@gmail.com"):
-                st.markdown("<div class='fm-err'>⚠️ Gunakan alamat Gmail (@gmail.com).</div>",
-                            unsafe_allow_html=True)
-            elif len(phone) < 10:
-                st.markdown("<div class='fm-err'>⚠️ Nomor telepon tidak valid.</div>",
-                            unsafe_allow_html=True)
-            elif len(password) < 6:
-                st.markdown("<div class='fm-err'>⚠️ Password minimal 6 karakter.</div>",
-                            unsafe_allow_html=True)
-            elif password != confirm:
-                st.markdown("<div class='fm-err'>⚠️ Password tidak cocok.</div>",
-                            unsafe_allow_html=True)
+def render_register():
+    st.markdown(f"""
+    <div style="max-width:460px;margin:80px auto 0;padding:20px">
+      <div class="fm-card">
+        <div class="auth-icon-wrap">📝</div>
+        <h2 class="auth-title">Buat Akun</h2>
+        <p class="auth-sub">Daftar untuk mulai latihan dengan AI Coach</p>
+    """, unsafe_allow_html=True)
+
+    email = st.text_input("📧 Gmail", key="reg_email")
+    phone = st.text_input("📱 Nomor Telepon", key="reg_phone")
+    password = st.text_input("🔒 Password", type="password", key="reg_password")
+    confirm = st.text_input("🔒 Konfirmasi Password", type="password", key="reg_confirm")
+
+    if st.button("✅ Daftar", type="primary", use_container_width=True):
+        if password != confirm:
+            st.markdown('<div class="fm-err">❌ Password tidak cocok!</div>', unsafe_allow_html=True)
+        else:
+            success, msg = register_user(email, phone, password)
+            if success:
+                st.markdown(f'<div class="fm-ok">✅ {msg}</div>', unsafe_allow_html=True)
+                st.session_state.page = "login"
+                st.rerun()
             else:
-                ok, msg = register_user(email, phone, password)
-                if ok:
-                    st.markdown(f"<div class='fm-ok'>✅ {msg} Silakan login.</div>",
-                                unsafe_allow_html=True)
-                    time.sleep(1.5)
-                    st.session_state.page = "login"
-                    st.rerun()
-                else:
-                    st.markdown(f"<div class='fm-err'>❌ {msg}</div>",
-                                unsafe_allow_html=True)
-        st.markdown("<div class='fm-divider'>sudah punya akun?</div>", unsafe_allow_html=True)
-        if st.button("← Kembali ke Login", type="secondary",
-                     use_container_width=True, key="btn_go_li"):
-            st.session_state.page = "login"
-            st.rerun()
-    show_footer()
+                st.markdown(f'<div class="fm-err">❌ {msg}</div>', unsafe_allow_html=True)
+
+    if st.button("← Kembali ke Login", use_container_width=True):
+        st.session_state.page = "login"
+        st.rerun()
+
+    st.markdown('</div>', unsafe_allow_html=True)
 
 
 # ==================== HOME ====================
-def page_home():
-    inject_css()
+def render_home():
     show_header(logged_in=True)
-    user  = st.session_state.user
-    uname = user["email"].split("@")[0].title()
-    stats = get_user_stats(user["id"])
-
     st.markdown(f"""
-    <div style="padding:8px 0 24px 0">
-      <div style="font-family:'Syne',sans-serif;font-size:2.4rem;font-weight:800;
-           letter-spacing:-.03em;line-height:1.1">Hei, {uname} 👋</div>
-      <div style="font-size:.95rem;color:#6b7080;margin-top:6px">
-        Siap berkeringat hari ini? Pilih olahraga dan mulai sesi latihan kamu.
+    <div style="max-width:1200px;margin:0 auto;padding:40px 40px 20px">
+      <div style="text-align:center;margin-bottom:40px">
+        <h1 style="font-family:'Syne',sans-serif;font-size:3rem;font-weight:800;letter-spacing:-.03em;margin:0;line-height:1.1">
+          Pilih <span style="background:linear-gradient(135deg,#00ff88,#00d4ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Latihanmu</span>
+        </h1>
+        <p style="font-size:1.1rem;color:#6b7080;margin-top:12px">Mulai perjalanan fitness-mu dengan AI Coach</p>
       </div>
-    </div>""", unsafe_allow_html=True)
-
-    c1, c2, c3, c4 = st.columns(4)
-    for col, val, lbl in [
-        (c1, stats["total_sessions"], "Total Sesi"),
-        (c2, stats["total_reps"],     "Total Reps"),
-        (c3, f"{stats['avg_score']}%","Avg Score"),
-        (c4, f"{stats['best_score']}%","Best Score"),
-    ]:
-        with col:
-            st.markdown(f"""
-            <div class='stat-card'>
-              <div class='stat-num'>{val}</div>
-              <div class='stat-lbl'>{lbl}</div>
-            </div>""", unsafe_allow_html=True)
-
-    st.markdown("<div class='section-head'>⚡ Pilih Olahraga</div>", unsafe_allow_html=True)
-    selected = st.session_state.selected_exercise
+    """, unsafe_allow_html=True)
 
     cols = st.columns(3)
-    for idx, (key, info) in enumerate(EX.items()):
-        with cols[idx]:
-            cls     = "ex-card selected" if selected == key else "ex-card"
-            muscles = "".join([f"<span class='ex-muscle-tag'>{m}</span>"
-                               for m in info["muscles"]])
+    for i, (key, ex) in enumerate(EX.items()):
+        with cols[i]:
+            selected = st.session_state.selected_exercise == key
             st.markdown(f"""
-            <div class="{cls}" style="--ex-color:{info['color']}">
-              <div class="ex-icon-wrap">
-                <span class="ex-icon">{info['icon']}</span>
+            <div class="ex-card {'selected' if selected else ''}" style="--ex-color:{ex['color']}">
+              <div class="ex-icon-wrap"><span class="ex-icon">{ex['icon']}</span></div>
+              <div class="ex-name">{ex['name']}</div>
+              <div class="ex-desc">{ex['desc']}</div>
+              <div class="ex-muscles">
+                {"".join(f'<span class="ex-muscle-tag">{m}</span>' for m in ex['muscles'])}
               </div>
-              <div class="ex-name">{info['name']}</div>
-              <div class="ex-desc">{info['desc']}</div>
-              <div class="ex-muscles">{muscles}</div>
             </div>
-            <div style="height:10px"></div>""", unsafe_allow_html=True)
-            if st.button(f"Pilih {info['name']}", key=f"pick_{key}",
-                         use_container_width=True):
+            """, unsafe_allow_html=True)
+
+            if st.button(f"Pilih {ex['name']}", key=f"select_{key}", type="primary" if selected else "secondary", use_container_width=True):
                 st.session_state.selected_exercise = key
-                st.session_state.workout_done      = False
-                st.session_state.workout_result    = None
+                st.session_state.page = "setup"
                 st.rerun()
 
-    if selected:
-        info = EX[selected]
-        st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
-        st.markdown(f"""
-        <div class="target-box">
-          <div class="target-title">{info['icon']} {info['name']} — Set Target</div>
-          <div class="target-sub">Berapa repetisi yang ingin kamu selesaikan hari ini?</div>
-        </div>""", unsafe_allow_html=True)
-        target = st.number_input("TARGET REPETISI", min_value=1, max_value=200,
-                                 value=10, step=1, key="target_input")
-        ca, cb = st.columns([3, 1])
-        with ca:
-            if st.button("⚡ MULAI WORKOUT", type="primary",
-                         use_container_width=True, key="btn_start"):
-                st.session_state.target_reps   = target
-                st.session_state.workout_done  = False
-                st.session_state.workout_result = None
-                st.session_state.page          = "countdown"
-                st.rerun()
-        with cb:
-            if st.button("✕ Batal", type="secondary",
-                         use_container_width=True, key="btn_cancel"):
-                st.session_state.selected_exercise = None
-                st.session_state.workout_done      = False
-                st.session_state.workout_result    = None
-                st.rerun()
     show_footer()
 
 
-# ==================== COUNTDOWN ====================
-def page_countdown():
-    inject_css()
+# ==================== SETUP ====================
+def render_setup():
     show_header(logged_in=True)
-    ex   = st.session_state.selected_exercise
-    info = EX[ex]
-
-    st.session_state.workout_done   = False
-    st.session_state.workout_result = None
+    ex_key = st.session_state.selected_exercise
+    ex = EX[ex_key]
 
     st.markdown(f"""
-    <div style="text-align:center;padding:20px 0 10px 0">
-      <div style="font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;
-           text-transform:uppercase;letter-spacing:.2em;color:#6b7080;margin-bottom:4px">
-        Bersiap untuk
-      </div>
-      <div style="font-family:'Syne',sans-serif;font-size:2.2rem;font-weight:800">
-        {info['icon']} {info['name']}
-      </div>
-      <div style="font-size:.9rem;color:#6b7080;margin-top:6px">
-        Target: <span style="color:{info['color']};font-weight:700">
-          {st.session_state.target_reps} reps
-        </span>
-      </div>
-    </div>""", unsafe_allow_html=True)
+    <div style="max-width:700px;margin:60px auto 0;padding:20px">
+      <div class="target-box" style="--ex-color:{ex['color']}">
+        <div class="target-title">{ex['icon']} Latihan {ex['name']}</div>
+        <div class="target-sub">Atur target reps untuk sesi latihanmu</div>
+    """, unsafe_allow_html=True)
 
-    ph = st.empty()
-    for i in range(5, 0, -1):
-        with ph.container():
-            st.markdown(f"<div class='countdown-ring'>{i}</div>", unsafe_allow_html=True)
-            st.markdown("<div class='countdown-sub'>Bersiap…</div>", unsafe_allow_html=True)
-        time.sleep(1)
+    target = st.number_input("🎯 Target Reps", min_value=1, max_value=100, value=st.session_state.target_reps, step=1)
 
-    with ph.container():
-        st.markdown("""
-        <div style="font-family:'Syne',sans-serif;font-size:7rem;font-weight:800;
-             text-align:center;background:linear-gradient(135deg,#00ff88,#00d4ff);
-             -webkit-background-clip:text;-webkit-text-fill-color:transparent;
-             background-clip:text;filter:drop-shadow(0 0 40px rgba(0,255,136,0.5))">
-          GO! 🔥
-        </div>""", unsafe_allow_html=True)
-    time.sleep(0.8)
+    st.markdown(f"""
+      <div style="margin-top:20px;display:flex;gap:12px">
+    """, unsafe_allow_html=True)
 
-    st.session_state.workout_done   = False
-    st.session_state.workout_result = None
-    st.session_state.page           = "workout"
-    st.rerun()
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("🏋️ Mulai Latihan", type="primary", use_container_width=True):
+            st.session_state.target_reps = int(target)
+            st.session_state.page = "workout"
+            st.rerun()
+    with c2:
+        if st.button("← Batal", use_container_width=True):
+            st.session_state.page = "home"
+            st.rerun()
+
+    st.markdown('</div></div>', unsafe_allow_html=True)
 
 
 # ==================== WORKOUT ====================
-def page_workout():
-    # IMPORT CV2 DI DALAM FUNGSI (menghindari error libGL.so.1)
-    import cv2
-    
-    inject_css()
+def render_workout():
     show_header(logged_in=True)
-    ex     = st.session_state.selected_exercise
-    info   = EX[ex]
+    ex_key = st.session_state.selected_exercise
+    ex = EX[ex_key]
     target = st.session_state.target_reps
 
-    if (st.session_state.get("workout_done") is True
-            and st.session_state.get("workout_result") is not None
-            and st.session_state.get("page") == "workout"):
-        show_workout_result(st.session_state.workout_result)
+    st.markdown(f"""
+    <div style="max-width:900px;margin:0 auto;padding:30px 40px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="fm-logo-ring">{ex['icon']}</div>
+          <div>
+            <div style="font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800">{ex['name']}</div>
+            <div style="font-size:.8rem;color:#6b7080">Target: {target} reps</div>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:1.5rem;font-weight:700;color:#00ff88" id="rep-count">0 / {target}</div>
+          <div style="font-size:.75rem;color:#6b7080;text-transform:uppercase;letter-spacing:.1em">Reps</div>
+        </div>
+      </div>
+    """, unsafe_allow_html=True)
+
+    # Countdown sebelum mulai
+    if "countdown_start" not in st.session_state:
+        st.session_state.countdown_start = time.time()
+
+    time_elapsed = time.time() - st.session_state.countdown_start
+    remaining = 5 - int(time_elapsed)
+
+    if remaining > 0:
+        st.markdown(f"""
+        <div style="text-align:center;padding:60px 0">
+          <div class="countdown-ring">{remaining}</div>
+          <div class="countdown-sub">Bersiap...</div>
+        </div>
+        """, unsafe_allow_html=True)
+        time.sleep(0.1)
+        st.rerun()
+    else:
+        # Mulai workout
+        render_workout_camera(ex_key, target)
+
+
+def render_workout_camera(ex_key, target):
+    # Load model
+    model_path = f"model_{ex_key}.pkl"
+    if not os.path.exists(model_path):
+        st.error(f"Model {model_path} tidak ditemukan!")
         return
 
-    st.session_state.workout_done   = False
-    st.session_state.workout_result = None
+    model = joblib.load(model_path)
 
-    st.markdown(f"""
-    <div style="font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;
-         letter-spacing:-.02em;margin-bottom:20px">
-      {info['icon']} {info['name']}
-      <span style="font-size:.9rem;color:#6b7080;font-weight:400;margin-left:8px">
-        Target: {target} reps
-      </span>
-    </div>""", unsafe_allow_html=True)
+    # Inisialisasi detector & feedback
+    detector = ExerciseDetector(ex_key)
+    feedback_system = FeedbackSystem(ex_key)
 
-    model_map = {
-        "curl":   "model_curl.pkl",
-        "pushup": "model_pushup.pkl",
-        "squat":  "model_squat.pkl",
-    }
-    extract_map = {
-        "curl":   extract_curl_features,
-        "pushup": extract_pushup_features,
-        "squat":  extract_squat_features,
-    }
+    # Session state untuk workout
+    if "workout_reps" not in st.session_state:
+        st.session_state.workout_reps = 0
+        st.session_state.workout_feedback_list = []
+        st.session_state.workout_scores = []
+        st.session_state.workout_started = False
 
-    if not os.path.exists(model_map[ex]):
-        st.error(f"❌ Model file '{model_map[ex]}' tidak ditemukan!")
-        if st.button("← Kembali", type="secondary"):
-            st.session_state.page = "home"
-            st.rerun()
-        st.stop()
+    # **PENTING: Gunakan st.camera_input untuk hosting cloud**
+    camera_input = st.camera_input("Aktifkan Kamera")
 
-    try:
-        model   = joblib.load(model_map[ex])
-        extract = extract_map[ex]
-    except Exception as e:
-        st.error(f"❌ Gagal load model: {e}")
-        if st.button("← Kembali", type="secondary"):
-            st.session_state.page = "home"
-            st.rerun()
-        st.stop()
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        if camera_input is not None:
+            # Konversi ke format yang bisa diproses OpenCV
+            import io
+            from PIL import Image
+            image = Image.open(camera_input)
+            frame_bgr = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
 
-    cap_test = cv2.VideoCapture(0)
-    cam_ok   = cap_test.isOpened()
-    cap_test.release()
-    if not cam_ok:
-        st.error("❌ Kamera tidak terdeteksi!")
-        if st.button("← Kembali", type="secondary"):
-            st.session_state.page = "home"
-            st.rerun()
-        st.stop()
+            # Proses dengan MediaPipe
+            with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as pose:
+                results = pose.process(frame_bgr)
 
-    col_cam, col_panel = st.columns([3, 1])
-    with col_cam:
-        frame_ph = st.empty()
-    with col_panel:
-        st.markdown("<div class='fm-card' style='padding:20px'>", unsafe_allow_html=True)
-        rep_ph      = st.empty()
-        score_ph    = st.empty()
-        form_ph     = st.empty()
-        tip_ph      = st.empty()
-        progress_ph = st.empty()
-        stop_btn    = st.button("⏹ Selesai", type="primary",
-                                use_container_width=True, key="btn_stop")
-        st.markdown("</div>", unsafe_allow_html=True)
+                # Gambar pose
+                frame_bgr.flags.writeable = True
+                if results.pose_landmarks:
+                    mp_drawing.draw_landmarks(
+                        frame_bgr,
+                        results.pose_landmarks,
+                        mp_pose.POSE_CONNECTIONS,
+                        landmark_drawing_spec=mp_drawing.DrawingSpec(color=(0, 255, 136), thickness=2, circle_radius=2),
+                        connection_drawing_spec=mp_drawing.DrawingSpec(color=(0, 212, 255), thickness=2)
+                    )
 
-    detector = ExerciseDetector()
-    feedback = FeedbackSystem(ex)
-    pose     = mp_pose.Pose(min_detection_confidence=0.7, min_tracking_confidence=0.7)
-    cap      = cv2.VideoCapture(0)
-    pred_buf = collections.deque(maxlen=10)
-    ex_color = {"pushup":(0,255,136),"curl":(0,212,255),"squat":(53,107,255)}[ex]
+                # Ekstrak fitur & prediksi jika pose valid
+                current_feedback = "Pose tidak terdeteksi. Pastikan seluruh tubuh terlihat."
+                current_score = 0
 
-    count        = 0
-    cur_score    = 0.
-    tip          = ""
-    last_pred    = "—"
-    current_zone = "—"
-    frame_n      = 0
-
-    ZONE_LABEL = {"bad": "KURANG", "good": "BAGUS", "perfect": "SEMPURNA", "—": "—"}
-    ZONE_COLOR_HEX = {"bad": "#ff5555", "good": "#ffaa00", "perfect": "#00ff88", "—": "#6b7080"}
-    ZONE_COLOR_BGR = {"bad": (80,80,255), "good": (0,170,255), "perfect": (136,255,0), "—": (128,128,128)}
-
-    _ui_last = {"count": None, "score": None, "zone": None, "tip": None}
-    last_landmarks = None
-
-    def draw_bar(f, x, y, w, h, val, mx, col):
-        cv2.rectangle(f,(x,y),(x+w,y+h),(40,40,40),-1)
-        fill = int(w * min(val,mx)/mx) if mx else 0
-        if fill: cv2.rectangle(f,(x,y),(x+fill,y+h),col,-1)
-        cv2.rectangle(f,(x,y),(x+w,y+h),(80,80,80),1)
-
-    try:
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                st.warning("⚠️ Gagal baca frame kamera.")
-                break
-
-            frame  = cv2.flip(frame, 1)
-            fh, fw = frame.shape[:2]
-            if fw > 640:
-                frame = cv2.resize(frame,(640, int(fh*640/fw)))
-                fh, fw = frame.shape[:2]
-
-            frame_n += 1
-            if frame_n % 2 == 0:
-                res = pose.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-                last_landmarks = res.pose_landmarks
-
-            if last_landmarks:
-                mp_drawing.draw_landmarks(
-                    frame, last_landmarks, mp_pose.POSE_CONNECTIONS,
-                    mp_drawing.DrawingSpec(color=ex_color,thickness=2,circle_radius=2),
-                    mp_drawing.DrawingSpec(color=(200,200,200),thickness=1),
-                )
-
-            if frame_n % 2 == 0:
-                if last_landmarks:
-                    lm    = last_landmarks.landmark
-                    valid, reason = get_pose_validity(lm)
+                if results.pose_landmarks:
+                    valid, msg = get_pose_validity(ex_key, results.pose_landmarks)
                     if valid:
-                        features = extract(lm)
-                        pred_buf.append(model.predict(np.array([features]))[0])
-                        pred      = Counter(pred_buf).most_common(1)[0][0]
-                        last_pred = pred
-
-                        if ex == "curl":
-                            count, phase = detector.detect_curl(
-                                features[0], features[1], pred, cur_score)
-                        elif ex == "pushup":
-                            count, phase = detector.detect_pushup(
-                                features[0], features[1], pred, cur_score)
+                        if ex_key == "curl":
+                            features = extract_curl_features(results.pose_landmarks)
+                        elif ex_key == "pushup":
+                            features = extract_pushup_features(results.pose_landmarks)
+                        elif ex_key == "squat":
+                            features = extract_squat_features(results.pose_landmarks)
                         else:
-                            count, phase = detector.detect_squat(
-                                features[0], pred, cur_score)
+                            features = None
 
-                        if phase == "complete":
-                            zt, dur = detector.get_last_completed_zone_times(ex)
-                            if dur > 0.3:
-                                cur_score, _ = FeedbackSystem.score_from_zones(zt, dur)
-                            else:
-                                cur_score = feedback.calculate_score(pred, features)
-                            feedback._record(cur_score)
-                            if detector.rep_log:
-                                detector.rep_log[-1].score = cur_score
-                        elif phase:
-                            zt, dur = detector.get_zone_times_and_duration(ex)
-                            if dur > 0.3:
-                                cur_score, _ = FeedbackSystem.score_from_zones(zt, dur)
+                        if features is not None:
+                            pred = model.predict([features])[0]
+                            class_label = ["bad", "good", "perfect"][pred]
+                            current_feedback = feedback_system.get_feedback(class_label)
+                            current_score = feedback_system.get_score(class_label)
 
-                        current_zone = detector.get_current_zone(ex)
-                        tip = feedback.get_realtime_tip(features, phase, current_zone)
+                            # Update rep jika detektor mendeteksi gerakan baru
+                            if detector.detect_rep(features):
+                                st.session_state.workout_reps += 1
+                                st.session_state.workout_feedback_list.append(current_feedback)
+                                st.session_state.workout_scores.append(current_score)
 
-                        tw = detector.get_tempo_warning(ex)
-                        if tw: tip = tw
-                    else:
-                        current_zone = "—"
-                        cv2.putText(frame, reason,(10,fh-50),
-                                    cv2.FONT_HERSHEY_SIMPLEX,0.45,(80,80,255),1)
-                else:
-                    current_zone = "—"
-                    cv2.putText(frame,"Pose tidak terdeteksi",(10,40),
-                                cv2.FONT_HERSHEY_SIMPLEX,0.6,(100,100,100),1)
+                # Tampilkan frame
+                st.image(frame_bgr, channels="BGR", use_container_width=True)
 
-            ov = frame.copy()
-            cv2.rectangle(ov,(0,0),(220,80),(0,0,0),-1)
-            cv2.addWeighted(ov,0.6,frame,0.4,0,frame)
-            cv2.putText(frame,f"{count}/{target}",(10,32),
-                        cv2.FONT_HERSHEY_SIMPLEX,1.0,ex_color,2)
-            draw_bar(frame,10,40,200,6,count,target,ex_color)
-            cv2.putText(frame,f"{int(cur_score)}%",(10,68),
-                        cv2.FONT_HERSHEY_SIMPLEX,0.5,(180,180,180),1)
-
-            zone_bgr = ZONE_COLOR_BGR.get(current_zone, (128,128,128))
-            zone_txt = ZONE_LABEL.get(current_zone, "—")
-            (tw_px, th_px), _ = cv2.getTextSize(zone_txt, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
-            badge_x = fw - tw_px - 24
-            cv2.rectangle(frame,(badge_x-10,8),(fw-8,8+th_px+16),(0,0,0),-1)
-            cv2.rectangle(frame,(badge_x-10,8),(fw-8,8+th_px+16),zone_bgr,2)
-            cv2.putText(frame,zone_txt,(badge_x,8+th_px+8),
-                        cv2.FONT_HERSHEY_SIMPLEX,0.6,zone_bgr,2)
-
-            tc = zone_bgr
-            cv2.rectangle(frame,(0,fh-32),(fw,fh),(0,0,0),-1)
-            cv2.putText(frame,tip[:45],(10,fh-10),
-                        cv2.FONT_HERSHEY_SIMPLEX,0.45,tc,1)
-
-            frame_ph.image(cv2.cvtColor(frame,cv2.COLOR_BGR2RGB),
-                           channels="RGB", use_container_width=True)
-
-            score_i = int(cur_score)
-            if count != _ui_last["count"]:
-                rep_ph.markdown(f"""
-                <div style="text-align:center;padding:12px 0 4px">
-                  <span style="font-family:'Syne',sans-serif;font-size:4.5rem;font-weight:800;
-                    background:linear-gradient(135deg,#00ff88,#00d4ff);
-                    -webkit-background-clip:text;-webkit-text-fill-color:transparent;
-                    background-clip:text">{count}</span>
-                  <span style="color:#6b7080;font-size:1.2rem"> / {target}</span>
-                </div>""", unsafe_allow_html=True)
-                progress_ph.progress(min(count/target,1.) if target else 0.)
-                _ui_last["count"] = count
-
-            if score_i != _ui_last["score"]:
-                sc_col = "#00ff88" if score_i>=80 else "#ffaa00" if score_i>=60 else "#ff5555"
-                score_ph.markdown(f"""
-                <div style="text-align:center;font-family:'JetBrains Mono',monospace;
-                  font-size:1.4rem;font-weight:600;color:{sc_col}">{score_i}%</div>""",
-                unsafe_allow_html=True)
-                _ui_last["score"] = score_i
-
-            if current_zone != _ui_last["zone"]:
-                zc = ZONE_COLOR_HEX.get(current_zone, "#6b7080")
-                zl = ZONE_LABEL.get(current_zone, "—")
-                form_ph.markdown(f"""
-                <div style="text-align:center;font-size:.85rem;font-weight:700;color:{zc};
-                  text-transform:uppercase;letter-spacing:.1em">● {zl}</div>""",
-                unsafe_allow_html=True)
-                _ui_last["zone"] = current_zone
-
-            if tip != _ui_last["tip"]:
-                tip_ph.markdown(f"""
-                <div style="text-align:center;font-size:.82rem;color:#9090a0;margin:8px 0">
-                  {tip}</div>""", unsafe_allow_html=True)
-                _ui_last["tip"] = tip
-
-            if count >= target or stop_btn:
-                break
-
-    except Exception as e:
-        st.error(f"❌ Error: {e}")
-    finally:
-        cap.release()
-        pose.close()
-
-    summary = feedback.get_detailed_summary()
-    save_workout(
-        user_id    = st.session_state.user["id"],
-        exercise   = ex,
-        target_reps= target,
-        actual_reps= count,
-        avg_score  = float(summary["avg_score"]),
-        consistency= float(summary["consistency"]),
-        good_reps  = int(summary["good_reps"]),
-        bad_reps   = int(summary["bad_reps"]),
-        feedback   = feedback.get_feedback(),
-        rep_details= json.dumps([{
-            "rep":        int(r.rep_num),
-            "score":      float(round(r.score,1)),
-            "prediction": str(r.prediction),
-            "duration":   float(round(r.duration,2)),
-        } for r in detector.rep_log]),
-    )
-
-    st.session_state.workout_result = {
-        "exercise":    ex,
-        "count":       count,
-        "target":      target,
-        "summary":     summary,
-        "feedback_txt":feedback.get_feedback(),
-        "rep_log":     detector.rep_log,
-    }
-    st.session_state.workout_done = True
-    st.rerun()
-
-
-# ==================== SHOW RESULT ====================
-def show_workout_result(res):
-    ex   = res["exercise"]
-    info = EX[ex]
-    s    = res["summary"]
-    pct  = round(res["count"]/res["target"]*100) if res["target"] else 0
-    grade = ("🏆 SEMPURNA"     if s["avg_score"]>=90 else
-             "💪 BAGUS BANGET" if s["avg_score"]>=75 else
-             "👍 LUMAYAN"      if s["avg_score"]>=60 else
-             "💡 TERUS BERLATIH")
-
-    st.markdown(f"""
-    <div class="workout-result-box">
-      <div style="text-align:center;font-family:'Syne',sans-serif;font-size:.78rem;
-           font-weight:700;text-transform:uppercase;letter-spacing:.2em;
-           color:#6b7080;margin-bottom:8px">
-        ✅ WORKOUT SELESAI — {info['name'].upper()}
-      </div>
-      <div style="text-align:center;font-family:'Syne',sans-serif;font-size:6rem;
-           font-weight:800;background:linear-gradient(135deg,#00ff88,#00d4ff);
-           -webkit-background-clip:text;-webkit-text-fill-color:transparent;
-           background-clip:text;filter:drop-shadow(0 0 40px rgba(0,255,136,0.4));line-height:1">
-        {s['avg_score']}%
-      </div>
-      <div style="text-align:center;font-family:'Syne',sans-serif;font-size:1.5rem;
-           font-weight:700;background:linear-gradient(90deg,#00ff88,#00d4ff);
-           -webkit-background-clip:text;-webkit-text-fill-color:transparent;
-           background-clip:text;margin:8px 0">{grade}</div>
-      <div style="text-align:center;font-size:.9rem;color:#6b7080">
-        {res['count']} / {res['target']} reps selesai ({pct}%)
-      </div>
-    </div>""", unsafe_allow_html=True)
-
-    st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
-    c1, c2, c3, c4 = st.columns(4)
-    for col, val, lbl in [
-        (c1, f"{s['avg_score']}%",          "Avg Score"),
-        (c2, f"{s['consistency']}%",        "Konsistensi"),
-        (c3, f"{s['good_reps']}/{s['total_reps']}", "Reps Bagus"),
-        (c4, f"{res['count']}/{res['target']}",     "Reps Selesai"),
-    ]:
-        with col:
-            st.markdown(f"""
-            <div class='stat-card'>
-              <div class='stat-num'>{val}</div>
-              <div class='stat-lbl'>{lbl}</div>
-            </div>""", unsafe_allow_html=True)
-
-    st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
-    col_l, col_r = st.columns(2)
-    with col_l:
-        st.markdown("<div class='feedback-card'>"
-                    "<div class='feedback-title'>💬 AI Coach Feedback</div>",
-                    unsafe_allow_html=True)
-        for line in res["feedback_txt"].split("\n"):
-            if line.strip():
-                st.markdown(f"<p style='margin:8px 0;font-size:.9rem;line-height:1.6'>"
-                            f"{line}</p>", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-    with col_r:
-        if res["rep_log"]:
-            st.markdown("""<div style="font-family:'Syne',sans-serif;font-size:.78rem;
-                 font-weight:700;text-transform:uppercase;letter-spacing:.1em;
-                 color:#6b7080;margin-bottom:10px">📊 Skor Per Rep</div>""",
-            unsafe_allow_html=True)
-            df = pd.DataFrame([{"Rep":f"#{r.rep_num}","Skor (%)":round(r.score,1)}
-                                for r in res["rep_log"]])
-            st.bar_chart(df.set_index("Rep")["Skor (%)"], height=200)
-
-    st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
-    col_a, col_b, col_c = st.columns(3)
-    with col_a:
-        if st.button("🏠 Beranda", type="secondary", use_container_width=True, key="res_home"):
-            st.session_state.workout_done      = False
-            st.session_state.workout_result    = None
-            st.session_state.selected_exercise = None
-            st.session_state.page              = "home"
-            st.rerun()
-    with col_b:
-        if st.button("🔄 Ulangi", type="primary", use_container_width=True, key="res_ulang"):
-            st.session_state.workout_done   = False
-            st.session_state.workout_result = None
-            st.session_state.page           = "countdown"
-            st.rerun()
-    with col_c:
-        if st.button("📊 Profil", type="secondary", use_container_width=True, key="res_profil"):
-            st.session_state.workout_done   = False
-            st.session_state.workout_result = None
-            st.session_state.page           = "profile"
-            st.rerun()
-    show_footer()
-
-
-# ==================== PROFILE ====================
-def page_profile():
-    inject_css()
-    show_header(logged_in=True)
-    user  = st.session_state.user
-    stats = get_user_stats(user["id"])
-    hist  = get_user_history(user["id"])
-    uname = user["email"].split("@")[0].title()
-
-    col_info, col_stats = st.columns([1, 2.2])
-    with col_info:
+    with col2:
+        # Display score
         st.markdown(f"""
-        <div class="fm-card" style="text-align:center">
-          <div class="profile-avatar">👤</div>
-          <div style="font-family:'Syne',sans-serif;font-size:1.3rem;
-               font-weight:800;letter-spacing:-.02em">{uname}</div>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:.72rem;
-               color:#6b7080;margin-top:4px">{user['email']}</div>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:.72rem;
-               color:#6b7080">{user['phone']}</div>
-          <div style="margin-top:16px">
-            <span style="background:rgba(0,255,136,0.08);border:1px solid rgba(0,255,136,0.2);
-               color:#00ff88;border-radius:100px;padding:4px 14px;font-size:.7rem;
-               font-weight:600;text-transform:uppercase;letter-spacing:.06em">MEMBER</span>
-          </div>
-          <div style="margin-top:12px;font-size:.72rem;color:#4a4a5a;
-               font-family:'JetBrains Mono',monospace">
-            Sejak {user['created_at'][:10]}
-          </div>
-        </div>""", unsafe_allow_html=True)
+        <div class="stat-card" style="margin-bottom:16px">
+          <div class="stat-num" style="font-size:3rem">{st.session_state.workout_reps}</div>
+          <div class="stat-lbl">Reps Selesai</div>
+        </div>
+        """, unsafe_allow_html=True)
 
-    with col_stats:
-        st.markdown("""<div style="font-family:'Syne',sans-serif;font-size:.9rem;
-             font-weight:700;text-transform:uppercase;letter-spacing:.08em;
-             color:#6b7080;margin-bottom:16px">📈 Statistik Keseluruhan</div>""",
-        unsafe_allow_html=True)
-        r1, r2 = st.columns(2)
-        for col, val, lbl in [
-            (r1, stats["total_sessions"], "Total Sesi"),
-            (r2, stats["total_reps"],     "Total Reps"),
-        ]:
-            with col:
-                st.markdown(f"""
-                <div class='stat-card'>
-                  <div class='stat-num'>{val}</div>
-                  <div class='stat-lbl'>{lbl}</div>
-                </div>""", unsafe_allow_html=True)
-        st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
-        r3, r4 = st.columns(2)
-        for col, val, lbl in [
-            (r3, f"{stats['avg_score']}%",  "Avg Score"),
-            (r4, f"{stats['best_score']}%", "Best Score"),
-        ]:
-            with col:
-                st.markdown(f"""
-                <div class='stat-card'>
-                  <div class='stat-num'>{val}</div>
-                  <div class='stat-lbl'>{lbl}</div>
-                </div>""", unsafe_allow_html=True)
+        # Progress bar
+        progress = min(st.session_state.workout_reps / target, 1.0)
+        st.progress(progress)
 
-    st.markdown("<div class='section-head'>📋 Riwayat Workout</div>", unsafe_allow_html=True)
+        # Feedback saat ini
+        st.markdown(f"""
+        <div class="feedback-card" style="margin-top:16px">
+          <div class="feedback-title">Feedback Saat Ini</div>
+          <div style="font-size:.95rem;color:#f0f0ff;line-height:1.6">{current_feedback}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
-    if not hist:
-        st.markdown("""
-        <div class="fm-card" style="text-align:center;padding:48px">
-          <div style="font-size:4rem;margin-bottom:12px;filter:grayscale(1);opacity:.4">🏋️</div>
-          <div style="font-family:'Syne',sans-serif;font-size:1.1rem;
-               font-weight:700;color:#6b7080">Belum ada riwayat</div>
-          <div style="font-size:.85rem;color:#4a4a5a;margin-top:6px">
-            Mulai latihan pertamamu sekarang! 💪
-          </div>
-        </div>""", unsafe_allow_html=True)
-    else:
-        tab_all, tab_chart = st.tabs(["📋 Semua Riwayat", "📊 Grafik Progres"])
-        with tab_all:
-            for row in hist:
-                ex_info  = EX.get(row["exercise"],
-                                  {"icon":"🏋️","name":row["exercise"],"color":"#00ff88"})
-                date_str = row["created_at"][:16].replace("T"," ")
-                sc_cls   = ("sc-p" if row["avg_score"]>=90 else
-                            "sc-g" if row["avg_score"]>=75 else
-                            "sc-o" if row["avg_score"]>=60 else "sc-b")
-                st.markdown(f"""
-                <div class="hist-row">
-                  <div style="width:56px;height:56px;border-radius:16px;flex-shrink:0;
-                       background:color-mix(in srgb,{ex_info['color']} 12%,transparent);
-                       border:1.5px solid color-mix(in srgb,{ex_info['color']} 30%,transparent);
-                       display:flex;align-items:center;justify-content:center;font-size:1.9rem;
-                       box-shadow:0 0 16px color-mix(in srgb,{ex_info['color']} 20%,transparent)">
-                    {ex_info['icon']}
-                  </div>
-                  <div style="flex:1">
-                    <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:1rem">
-                      {ex_info['name']}</div>
-                    <div style="font-family:'JetBrains Mono',monospace;font-size:.7rem;
-                         color:#6b7080;margin-top:2px">{date_str}</div>
-                  </div>
-                  <div style="text-align:right">
-                    <div class="{sc_cls}" style="font-family:'Syne',sans-serif;
-                         font-size:1.6rem;font-weight:800">{row['avg_score']}%</div>
-                    <div style="font-size:.73rem;color:#6b7080">
-                      {row['actual_reps']} / {row['target_reps']} reps
-                    </div>
-                  </div>
-                  <div style="text-align:right;min-width:80px">
-                    <div style="color:#00ff88;font-size:.82rem;font-weight:600">
-                      ✅ {row['good_reps']} bagus</div>
-                    <div style="color:#ff5555;font-size:.82rem;font-weight:600">
-                      ❌ {row['bad_reps']} kurang</div>
-                  </div>
-                </div>""", unsafe_allow_html=True)
-                with st.expander("Detail & Feedback"):
-                    st.markdown(row["feedback"])
-                    try:
-                        reps = json.loads(row["rep_details"])
-                        if reps:
-                            df = pd.DataFrame(reps)
-                            df.columns = ["Rep","Skor (%)","Form","Durasi (s)"]
-                            st.dataframe(df, use_container_width=True, hide_index=True)
-                    except Exception:
-                        pass
+        # Tombol selesai
+        if st.session_state.workout_reps >= target:
+            st.success("🎉 Target tercapai!")
 
-        with tab_chart:
-            if len(hist) >= 2:
-                df_h = pd.DataFrame([{
-                    "Tanggal": r["created_at"][:10],
-                    "Skor (%)": r["avg_score"],
-                    "Olahraga": EX.get(r["exercise"],{"name":r["exercise"]})["name"],
-                } for r in reversed(hist)])
-                st.markdown("""<div style="font-family:'Syne',sans-serif;font-weight:700;
-                     margin-bottom:8px">Progres Skor</div>""", unsafe_allow_html=True)
-                st.line_chart(df_h.set_index("Tanggal")["Skor (%)"], height=280)
-                st.markdown("""<div style="font-family:'Syne',sans-serif;font-weight:700;
-                     margin:20px 0 8px">Distribusi Olahraga</div>""", unsafe_allow_html=True)
-                dist = df_h["Olahraga"].value_counts().reset_index()
-                dist.columns = ["Olahraga","Sesi"]
-                st.bar_chart(dist.set_index("Olahraga"), height=220)
-            else:
-                st.info("Butuh minimal 2 sesi untuk melihat grafik progres.")
+        if st.button("✅ Selesai Latihan", type="primary", use_container_width=True):
+            # Hitung stats akhir
+            avg_score = np.mean(st.session_state.workout_scores) if st.session_state.workout_scores else 0
+            total_reps = st.session_state.workout_reps
 
-    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
-    if st.button("🏠 Kembali ke Beranda", type="secondary", key="prof_home"):
+            # Simpan ke database
+            save_workout(
+                user_id=st.session_state.user['id'],
+                exercise=ex_key,
+                target_reps=target,
+                actual_reps=total_reps,
+                avg_score=avg_score,
+                consistency=min(1.0, total_reps / target),
+                good_reps=sum(1 for s in st.session_state.workout_scores if s >= 80),
+                bad_reps=sum(1 for s in st.session_state.workout_scores if s < 50),
+                feedback=json.dumps(st.session_state.workout_feedback_list),
+                rep_details=json.dumps(st.session_state.workout_scores)
+            )
+
+            st.session_state.workout_result = {
+                'exercise': ex_key,
+                'actual_reps': total_reps,
+                'target_reps': target,
+                'avg_score': avg_score,
+                'completion': (total_reps / target) * 100
+            }
+            st.session_state.page = "result"
+            st.rerun()
+
+
+# ==================== RESULT ====================
+def render_result():
+    show_header(logged_in=True)
+    result = st.session_state.workout_result
+    if not result:
         st.session_state.page = "home"
         st.rerun()
+        return
+
+    ex_key = result['exercise']
+    ex = EX[ex_key]
+
+    # Reset workout session
+    st.session_state.pop("workout_reps", None)
+    st.session_state.pop("workout_feedback_list", None)
+    st.session_state.pop("workout_scores", None)
+    st.session_state.pop("countdown_start", None)
+
+    score = int(result['avg_score'])
+
+    st.markdown(f"""
+    <div style="max-width:800px;margin:60px auto 0;padding:20px">
+      <div class="result-hero">
+        <div style="font-size:.9rem;color:#6b7080;text-transform:uppercase;letter-spacing:.12em;font-weight:700">
+          {ex['icon']} {ex['name']} — Hasil Latihan
+        </div>
+        <div class="result-score">{score}</div>
+        <div style="font-size:1.1rem;color:#f0f0ff;margin-bottom:12px">
+          {result['actual_reps']} / {result['target_reps']} reps
+        </div>
+        <div style="font-size:1.2rem;font-weight:700;color:#00ff88">
+          {result['completion']:.1f}% Completion
+        </div>
+      </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style="display:flex;gap:16px;margin-top:20px;justify-content:center">
+    """, unsafe_allow_html=True)
+
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.markdown(f"""
+        <div class="stat-card">
+          <div class="stat-num">{result['actual_reps']}</div>
+          <div class="stat-lbl">Reps Selesai</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with c2:
+        st.markdown(f"""
+        <div class="stat-card">
+          <div class="stat-num">{score}</div>
+          <div class="stat-lbl">Avg Score</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with c3:
+        st.markdown(f"""
+        <div class="stat-card">
+          <div class="stat-num">{result['completion']:.0f}%</div>
+          <div class="stat-lbl">Completion</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style="text-align:center;margin-top:30px">
+    """, unsafe_allow_html=True)
+
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("🏠 Ke Halaman Utama", type="primary", use_container_width=True):
+            st.session_state.page = "home"
+            st.rerun()
+    with c2:
+        if st.button("📋 Lihat Histori", use_container_width=True):
+            st.session_state.page = "history"
+            st.rerun()
+
+    st.markdown('</div></div>', unsafe_allow_html=True)
+
+
+# ==================== HISTORY ====================
+def render_history():
+    show_header(logged_in=True)
+    user_id = st.session_state.user['id']
+    history = get_user_history(user_id)
+    stats = get_user_stats(user_id)
+
+    st.markdown(f"""
+    <div style="max-width:1100px;margin:0 auto;padding:40px 40px 20px">
+      <h2 style="font-family:'Syne',sans-serif;font-size:2.2rem;font-weight:800;letter-spacing:-.03em;margin-bottom:24px">
+        📋 Riwayat Latihan
+      </h2>
+    """, unsafe_allow_html=True)
+
+    # Stats cards
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        st.markdown(f"""
+        <div class="stat-card">
+          <div class="stat-num">{stats['total_sessions']}</div>
+          <div class="stat-lbl">Total Sesi</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with c2:
+        st.markdown(f"""
+        <div class="stat-card">
+          <div class="stat-num">{stats['total_reps']}</div>
+          <div class="stat-lbl">Total Reps</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with c3:
+        st.markdown(f"""
+        <div class="stat-card">
+          <div class="stat-num">{stats['avg_score']}</div>
+          <div class="stat-lbl">Avg Score</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with c4:
+        st.markdown(f"""
+        <div class="stat-card">
+          <div class="stat-num">{stats['best_score']}</div>
+          <div class="stat-lbl">Best Score</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown('<br>', unsafe_allow_html=True)
+
+    if not history:
+        st.info("Belum ada riwayat latihan. Mulai workout pertamamu!")
+    else:
+        # Tampilkan riwayat dalam bentuk list
+        for h in history:
+            ex_key = h['exercise']
+            ex = EX.get(ex_key, {"icon": "🏋️", "name": ex_key})
+            timestamp = datetime.fromisoformat(h['created_at'])
+            st.markdown(f"""
+            <div class="hist-row">
+              <div style="font-size:2rem">{ex['icon']}</div>
+              <div style="flex:1">
+                <div style="font-weight:700;font-size:1.05rem">{ex['name']}</div>
+                <div style="font-size:.8rem;color:#6b7080">{timestamp.strftime('%d %b %Y, %H:%M')}</div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-size:1.2rem;font-weight:800;color:#00ff88">{h['avg_score']}</div>
+                <div style="font-size:.75rem;color:#6b7080">{h['actual_reps']}/{h['target_reps']} reps</div>
+              </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    if st.button("← Kembali", use_container_width=True):
+        st.session_state.page = "home"
+        st.rerun()
+
     show_footer()
 
 
-# ==================== ROUTER ====================
-page = st.session_state.page
-user = st.session_state.user
+# ==================== MAIN ====================
+def main():
+    inject_css()
 
-if user is None:
-    if page == "register":
-        page_register()
+    # Routing halaman
+    page = st.session_state.page
+
+    if page == "login":
+        render_login()
+    elif page == "register":
+        render_register()
+    elif page == "home":
+        render_home()
+    elif page == "setup":
+        render_setup()
+    elif page == "workout":
+        render_workout()
+    elif page == "result":
+        render_result()
+    elif page == "history":
+        render_history()
     else:
-        page_login()
-else:
-    if   page == "home":      page_home()
-    elif page == "countdown": page_countdown()
-    elif page == "workout":   page_workout()
-    elif page == "profile":   page_profile()
-    else:                     page_home()
+        st.session_state.page = "login"
+        st.rerun()
+
+
+if __name__ == "__main__":
+    main()
