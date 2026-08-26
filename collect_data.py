@@ -63,8 +63,8 @@ ZONE_HINT = {
     },
 }
 
-mp_pose    = mp.solutions.pose
-mp_drawing = mp.solutions.drawing_utils
+from mediapipe.python.solutions import pose as mp_pose
+from mediapipe.python.solutions import drawing_utils as mp_drawing
 
 st.set_page_config(
     page_title="FitMove — Data Collection (Curl, Squat, Pushup)",
