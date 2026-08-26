@@ -47,7 +47,8 @@ class SystemEvaluator:
     def mp_pose(self):
         if self._mp_pose is None:
             import mediapipe as mp
-            self._mp_pose = mp.solutions.pose
+            from mediapipe.python.solutions import pose as mp_pose
+            self._mp_pose = mp_pose
         return self._mp_pose
     
     def _compute_metrics(self, model, X_test, y_test, model_name="Model"):
