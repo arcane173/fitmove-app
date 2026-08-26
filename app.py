@@ -549,7 +549,6 @@ def page_home():
         with ca:
             if st.button("⚡ MULAI WORKOUT", type="primary",
                          use_container_width=True, key="btn_start"):
-                # ── RESET SEMUA STATE WORKOUT ──
                 st.session_state.target_reps   = target
                 st.session_state.workout_done  = False
                 st.session_state.workout_result = None
@@ -572,7 +571,6 @@ def page_countdown():
     ex   = st.session_state.selected_exercise
     info = EX[ex]
 
-    # ── PAKSA RESET STATE SAAT MASUK COUNTDOWN ──
     st.session_state.workout_done   = False
     st.session_state.workout_result = None
 
@@ -609,7 +607,6 @@ def page_countdown():
         </div>""", unsafe_allow_html=True)
     time.sleep(0.8)
 
-    # ── RESET SEKALI LAGI TEPAT SEBELUM MASUK WORKOUT ──
     st.session_state.workout_done   = False
     st.session_state.workout_result = None
     st.session_state.page           = "workout"
@@ -624,15 +621,12 @@ def page_workout():
     info   = EX[ex]
     target = st.session_state.target_reps
 
-    # ── GUARD: hanya tampilkan result kalau BENAR-BENAR baru selesai ──
-    # Cek ketiganya sekaligus untuk memastikan tidak ada false positive
     if (st.session_state.get("workout_done") is True
             and st.session_state.get("workout_result") is not None
             and st.session_state.get("page") == "workout"):
         show_workout_result(st.session_state.workout_result)
         return
 
-    # ── Pastikan state bersih sebelum mulai ──
     st.session_state.workout_done   = False
     st.session_state.workout_result = None
 
@@ -645,7 +639,6 @@ def page_workout():
       </span>
     </div>""", unsafe_allow_html=True)
 
-    # ── Validasi model ──
     model_map = {
         "curl":   "model_curl.pkl",
         "pushup": "model_pushup.pkl",
@@ -674,7 +667,6 @@ def page_workout():
             st.rerun()
         st.stop()
 
-    # ── Validasi kamera ──
     cap_test = cv2.VideoCapture(0)
     cam_ok   = cap_test.isOpened()
     cap_test.release()
@@ -685,7 +677,6 @@ def page_workout():
             st.rerun()
         st.stop()
 
-    # ── Layout ──
     col_cam, col_panel = st.columns([3, 1])
     with col_cam:
         frame_ph = st.empty()
@@ -700,7 +691,6 @@ def page_workout():
                                 use_container_width=True, key="btn_stop")
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # ── Init ──
     detector = ExerciseDetector()
     feedback = FeedbackSystem(ex)
     pose     = mp_pose.Pose(min_detection_confidence=0.7, min_tracking_confidence=0.7)
@@ -715,25 +705,11 @@ def page_workout():
     current_zone = "—"
     frame_n      = 0
 
-    # Label & warna untuk status form (bad/good/perfect) yang ditampilkan
-    # live ke user — dipakai baik di HUD video maupun di panel Streamlit.
     ZONE_LABEL = {"bad": "KURANG", "good": "BAGUS", "perfect": "SEMPURNA", "—": "—"}
     ZONE_COLOR_HEX = {"bad": "#ff5555", "good": "#ffaa00", "perfect": "#00ff88", "—": "#6b7080"}
     ZONE_COLOR_BGR = {"bad": (80,80,255), "good": (0,170,255), "perfect": (136,255,0), "—": (128,128,128)}
 
-    # Cache nilai HUD terakhir yang sudah dirender ke UI. Widget teks
-    # (rep_ph/score_ph/form_ph/tip_ph/progress_ph) cuma di-update kalau
-    # nilainya BENERAN berubah dari frame sebelumnya — supaya Streamlit
-    # tidak re-render 4-5 widget HTML tiap frame kamera (~20-30x/detik),
-    # yang bikin UI kelihatan nge-glitch/kedip. Video (frame_ph) tetap
-    # di-update tiap frame karena itu memang harus terasa live.
     _ui_last = {"count": None, "score": None, "zone": None, "tip": None}
-
-    # Cache hasil landmark terakhir dari MediaPipe. Dipakai supaya kerangka
-    # (skeleton) tetap digambar di SETIAP frame video, walau deteksi ML
-    # (pose.process + model.predict) sengaja cuma jalan tiap 2 frame demi
-    # performa. Tanpa cache ini, kerangka cuma muncul di frame genap dan
-    # hilang di frame ganjil -> keliatan kedap-kedip.
     last_landmarks = None
 
     def draw_bar(f, x, y, w, h, val, mx, col):
@@ -742,7 +718,6 @@ def page_workout():
         if fill: cv2.rectangle(f,(x,y),(x+fill,y+h),col,-1)
         cv2.rectangle(f,(x,y),(x+w,y+h),(80,80,80),1)
 
-    # ── Loop ──
     try:
         while True:
             ret, frame = cap.read()
@@ -759,11 +734,8 @@ def page_workout():
             frame_n += 1
             if frame_n % 2 == 0:
                 res = pose.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-                last_landmarks = res.pose_landmarks  # cache (None kalau pose ilang)
+                last_landmarks = res.pose_landmarks
 
-            # Gambar kerangka TIAP FRAME dari cache terakhir — ini yang bikin
-            # kerangkanya gak lagi kedap-kedip (sebelumnya cuma tergambar di
-            # frame genap doang, jadi nyala-mati tiap ganti frame).
             if last_landmarks:
                 mp_drawing.draw_landmarks(
                     frame, last_landmarks, mp_pose.POSE_CONNECTIONS,
@@ -771,8 +743,6 @@ def page_workout():
                     mp_drawing.DrawingSpec(color=(200,200,200),thickness=1),
                 )
 
-            # Logika deteksi ML (berat: predict + hitung rep + skor) tetap
-            # cuma jalan tiap 2 frame, TIDAK tiap frame — ini yang jaga performa.
             if frame_n % 2 == 0:
                 if last_landmarks:
                     lm    = last_landmarks.landmark
@@ -794,31 +764,19 @@ def page_workout():
                                 features[0], pred, cur_score)
 
                         if phase == "complete":
-                            # Rep BENERAN selesai → pakai snapshot zone_times
-                            # dari rep yang baru selesai (diambil SEBELUM detector
-                            # mereset datanya), lalu catat SEKALI SAJA ke feedback.
                             zt, dur = detector.get_last_completed_zone_times(ex)
                             if dur > 0.3:
                                 cur_score, _ = FeedbackSystem.score_from_zones(zt, dur)
                             else:
                                 cur_score = feedback.calculate_score(pred, features)
                             feedback._record(cur_score)
-                            # Sinkronkan skor final ke rep_log (sebelumnya diisi
-                            # skor sementara dari event "peak"/"bottom").
                             if detector.rep_log:
                                 detector.rep_log[-1].score = cur_score
                         elif phase:
-                            # Event "peak"/"bottom" — ini baru SEBAGIAN rep, jadi
-                            # cuma dipakai untuk tampilan skor live, TIDAK
-                            # dicatat ke feedback (biar tidak dobel per rep).
                             zt, dur = detector.get_zone_times_and_duration(ex)
                             if dur > 0.3:
                                 cur_score, _ = FeedbackSystem.score_from_zones(zt, dur)
 
-                        # ── Status form & tip LIVE di SETIAP frame yang diproses
-                        # (bukan cuma pas rep selesai) — biar user langsung lihat
-                        # form-nya bad/good/perfect saat itu juga & dapat arahan
-                        # yang sesuai (mis. "tahan di kontraksi" / "lanjutkan!").
                         current_zone = detector.get_current_zone(ex)
                         tip = feedback.get_realtime_tip(features, phase, current_zone)
 
@@ -833,7 +791,6 @@ def page_workout():
                     cv2.putText(frame,"Pose tidak terdeteksi",(10,40),
                                 cv2.FONT_HERSHEY_SIMPLEX,0.6,(100,100,100),1)
 
-            # HUD
             ov = frame.copy()
             cv2.rectangle(ov,(0,0),(220,80),(0,0,0),-1)
             cv2.addWeighted(ov,0.6,frame,0.4,0,frame)
@@ -843,8 +800,6 @@ def page_workout():
             cv2.putText(frame,f"{int(cur_score)}%",(10,68),
                         cv2.FONT_HERSHEY_SIMPLEX,0.5,(180,180,180),1)
 
-            # Badge status form (BAD/GOOD/PERFECT) di pojok kanan atas, warna
-            # sesuai zona saat itu — biar user langsung lihat form-nya gimana.
             zone_bgr = ZONE_COLOR_BGR.get(current_zone, (128,128,128))
             zone_txt = ZONE_LABEL.get(current_zone, "—")
             (tw_px, th_px), _ = cv2.getTextSize(zone_txt, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
@@ -862,10 +817,6 @@ def page_workout():
             frame_ph.image(cv2.cvtColor(frame,cv2.COLOR_BGR2RGB),
                            channels="RGB", use_container_width=True)
 
-            # ── Update HUD teks HANYA kalau nilainya berubah dari frame
-            # sebelumnya. Ini mencegah Streamlit re-render 4-5 widget HTML
-            # puluhan kali/detik (yang sebelumnya bikin UI kelihatan glitch)
-            # walau nilainya sebenarnya belum berubah sama sekali.
             score_i = int(cur_score)
             if count != _ui_last["count"]:
                 rep_ph.markdown(f"""
@@ -911,7 +862,6 @@ def page_workout():
         cap.release()
         pose.close()
 
-    # ── Simpan hasil ──
     summary = feedback.get_detailed_summary()
     save_workout(
         user_id    = st.session_state.user["id"],
