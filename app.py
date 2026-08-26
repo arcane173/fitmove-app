@@ -44,14 +44,9 @@ for k, v in _DEFAULTS.items():
         st.session_state[k] = v
 
 # ==================== MEDIAPIPE INIT ====================
-# Kompatibel dengan MediaPipe 1.0.0+ dan 0.10.x
-try:
-    from mediapipe.python.solutions import pose as mp_pose
-    from mediapipe.python.solutions import drawing_utils as mp_drawing
-except (ImportError, AttributeError):
-    # Fallback untuk MediaPipe versi lama (0.10.x)
-    mp_pose = mp.solutions.pose
-    mp_drawing = mp.solutions.drawing_utils
+# Cara import yang kompatibel dengan MediaPipe 1.0.0+
+from mediapipe.python.solutions import pose as mp_pose
+from mediapipe.python.solutions import drawing_utils as mp_drawing
 
 EX = {
     "pushup": {"icon":"🤸","name":"Push-Up",   "desc":"Chest · Shoulders · Triceps","color":"#00ff88","muscles":["Chest","Shoulders","Triceps"]},
