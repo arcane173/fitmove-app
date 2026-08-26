@@ -44,8 +44,13 @@ for k, v in _DEFAULTS.items():
 
 # ==================== MEDIAPIPE INIT (Kompatibel) ====================
 # Cara import yang kompatibel dengan MediaPipe 1.0.0+ dan 0.10.x
-from mediapipe.python.solutions import pose as mp_pose
-from mediapipe.python.solutions import drawing_utils as mp_drawing
+try:
+    from mediapipe.python.solutions import pose as mp_pose
+    from mediapipe.python.solutions import drawing_utils as mp_drawing
+except (ImportError, AttributeError):
+    # Fallback untuk MediaPipe versi lama (0.10.x)
+    mp_pose = mp.solutions.pose
+    mp_drawing = mp.solutions.drawing_utils
 
 EX = {
     "pushup": {"icon":"🤸","name":"Push-Up",   "desc":"Chest · Shoulders · Triceps","color":"#00ff88","muscles":["Chest","Shoulders","Triceps"]},
@@ -616,7 +621,7 @@ def page_countdown():
 
 # ==================== WORKOUT ====================
 def page_workout():
-    # Import cv2 DI DALAM fungsi (menghindari error libGL.so.1 di startup)
+    # IMPORT CV2 DI DALAM FUNGSI (menghindari error libGL.so.1)
     import cv2
     
     inject_css()
