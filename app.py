@@ -1,5 +1,4 @@
 import streamlit as st
-import cv2
 import mediapipe as mp
 import numpy as np
 import joblib
@@ -43,8 +42,8 @@ for k, v in _DEFAULTS.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
-# ==================== MEDIAPIPE INIT ====================
-# Cara import yang kompatibel dengan MediaPipe 1.0.0+
+# ==================== MEDIAPIPE INIT (Kompatibel) ====================
+# Cara import yang kompatibel dengan MediaPipe 1.0.0+ dan 0.10.x
 from mediapipe.python.solutions import pose as mp_pose
 from mediapipe.python.solutions import drawing_utils as mp_drawing
 
@@ -53,6 +52,7 @@ EX = {
     "curl":   {"icon":"💪","name":"Bicep Curl", "desc":"Biceps · Forearms",          "color":"#00d4ff","muscles":["Biceps","Forearms","Core"]},
     "squat":  {"icon":"🏋️","name":"Squat",      "desc":"Quads · Glutes · Core",      "color":"#ff6b35","muscles":["Quads","Glutes","Hamstrings"]},
 }
+
 # ==================== CSS ====================
 def inject_css():
     dm = st.session_state.dark_mode
@@ -616,6 +616,9 @@ def page_countdown():
 
 # ==================== WORKOUT ====================
 def page_workout():
+    # Import cv2 DI DALAM fungsi (menghindari error libGL.so.1 di startup)
+    import cv2
+    
     inject_css()
     show_header(logged_in=True)
     ex     = st.session_state.selected_exercise
