@@ -43,15 +43,21 @@ for k, v in _DEFAULTS.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
-mp_pose    = mp.solutions.pose
-mp_drawing = mp.solutions.drawing_utils
+# ==================== MEDIAPIPE INIT ====================
+# Kompatibel dengan MediaPipe 1.0.0+ dan 0.10.x
+try:
+    from mediapipe.python.solutions import pose as mp_pose
+    from mediapipe.python.solutions import drawing_utils as mp_drawing
+except (ImportError, AttributeError):
+    # Fallback untuk MediaPipe versi lama (0.10.x)
+    mp_pose = mp.solutions.pose
+    mp_drawing = mp.solutions.drawing_utils
 
 EX = {
     "pushup": {"icon":"🤸","name":"Push-Up",   "desc":"Chest · Shoulders · Triceps","color":"#00ff88","muscles":["Chest","Shoulders","Triceps"]},
     "curl":   {"icon":"💪","name":"Bicep Curl", "desc":"Biceps · Forearms",          "color":"#00d4ff","muscles":["Biceps","Forearms","Core"]},
     "squat":  {"icon":"🏋️","name":"Squat",      "desc":"Quads · Glutes · Core",      "color":"#ff6b35","muscles":["Quads","Glutes","Hamstrings"]},
 }
-
 # ==================== CSS ====================
 def inject_css():
     dm = st.session_state.dark_mode
